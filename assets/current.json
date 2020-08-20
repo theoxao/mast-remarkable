@@ -1,0 +1,23 @@
+{
+  "clouds": 0,
+  "dew_point": 21.67,
+  "dt": 1597659786,
+  "feels_like": 38.36,
+  "humidity": 43,
+  "pressure": 1005,
+  "sunrise": 1597613226,
+  "sunset": 1597660755,
+  "temp": 36.25,
+  "uvi": 10.96,
+  "visibility": 10000,
+  "weather": [
+    {
+      "description": "晴",
+      "icon": "01d",
+      "id": 800,
+      "main": "Clear"
+    }
+  ],
+  "wind_deg": 77,
+  "wind_speed": 3.43
+}
