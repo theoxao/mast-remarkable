@@ -8,10 +8,12 @@ use libremarkable::ui_extensions::element::{UIElement, UIElementWrapper};
 use crate::common::*;
 use chinese_lunisolar_calendar::{LunisolarDate, ChineseVariant};
 use libremarkable::cgmath::Point2;
-use libremarkable::framebuffer::common::color;
+use libremarkable::framebuffer::common::{color, mxcfb_rect, waveform_mode, display_temp, dither_mode};
 use crate::weather::{show_weather, refresh_hourly, refresh_daily};
 use std::process::Command;
 use serde_json::Value;
+use libremarkable::framebuffer::{cgmath, FramebufferDraw, FramebufferRefresh};
+use libremarkable::framebuffer::refresh::PartialRefreshMode;
 
 pub static mut HOUR: u32 = 25;
 pub static mut DATE: u32 = 32;
@@ -71,6 +73,20 @@ fn sync_time() {
     op.spawn().expect("error");
 }
 
+pub fn flash_full_screen(app: &mut appctx::ApplicationContext) {
+    let fb = app.get_framebuffer_ref();
+    let rect = mxcfb_rect::from(Point2 { x: 0, y: 0 }, cgmath::Vector2 { x: 1850, y: 1450 });
+    fb.fill_rect(rect.top_left().cast().unwrap(), rect.size(), color::WHITE);
+    fb.partial_refresh(
+        &rect,
+        PartialRefreshMode::Wait,
+        waveform_mode::WAVEFORM_MODE_DU,
+        display_temp::TEMP_USE_AMBIENT,
+        dither_mode::EPDC_FLAG_USE_DITHERING_PASSTHROUGH,
+        0,
+        false,
+    );
+}
 
 pub fn show_luni_calendar(app: &mut appctx::ApplicationContext) {
     let now = LunisolarDate::now().unwrap();
