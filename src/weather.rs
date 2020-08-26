@@ -1,15 +1,23 @@
+use std::borrow::BorrowMut;
 use std::default::default;
 
 use chrono::{FixedOffset, TimeZone, Utc};
 use easy_http_request::DefaultHttpRequest;
 use libremarkable::appctx;
+use libremarkable::appctx::ApplicationContext;
 use libremarkable::cgmath::Point2;
-use libremarkable::framebuffer::common::color;
+use libremarkable::framebuffer::{cgmath, common, FramebufferDraw, FramebufferRefresh};
+use libremarkable::framebuffer::common::{color, display_temp, dither_mode, mxcfb_rect, waveform_mode};
+use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
 
-pub fn get_weather() -> Weather {
-    let response = DefaultHttpRequest::get_from_url_str("http://api.theoxao.com/api/weather").unwrap().send().unwrap();
-    serde_json::from_slice(response.body.as_slice()).unwrap()
+pub fn get_weather() -> Option<Weather> {
+    let response = DefaultHttpRequest::get_from_url_str("http://api.theoxao.com/api/weather").unwrap().send();
+    if let Err(e) = response {
+        error!("{:?}", e);
+        return None;
+    }
+    Some(serde_json::from_slice(response.unwrap().body.as_slice()).unwrap())
 }
 
 static N01_ICON: &[u8] = include_bytes!("../assets/icon/01n@4x.png") as &[u8];
@@ -26,18 +34,90 @@ static ALERT_ICON: &[u8] = include_bytes!("../assets/icon/alert.png") as &[u8];
 static WEATHER: Option<Weather> = None;
 
 pub fn show_weather(app: &mut appctx::ApplicationContext) {
-    let weather = get_weather();
-    weather.show_current_weather(app);
-    weather.show_daily_weather(app);
-    weather.show_hourly_weather(app);
+    if let Some(weather) = get_weather() {
+        weather.show_current_weather(app);
+        weather.show_daily_weather(app);
+        weather.show_hourly_weather(app);
+    }
 }
 
-pub fn refresh_weather(app: &mut appctx::ApplicationContext, _handler: UIElementHandle) {
-    show_weather(app);
-    app.ui_elements.clone().keys().filter(|&key| { key.ends_with(":weather") })
-        .for_each(|key| {
-            debug!("{}", key);
-        });
+pub fn refresh_hourly(app: &mut appctx::ApplicationContext) {
+    refresh(app)
+}
+
+pub fn refresh_daily(app: &mut appctx::ApplicationContext) {
+    if let Some(weather) = get_weather() {
+        weather.show_daily_weather(app);
+    }
+}
+
+pub fn refresh(app: &mut appctx::ApplicationContext) {
+    if let Some(weather) = get_weather() {
+        let fb = app.get_framebuffer_ref();
+        let rect = mxcfb_rect::from(Point2 { x: 0, y: 0 }, cgmath::Vector2 { x: 1850, y: 235 });
+        fb.fill_rect(rect.top_left().cast().unwrap(), rect.size(), color::WHITE);
+        fb.partial_refresh(
+            &rect,
+            PartialRefreshMode::Wait,
+            waveform_mode::WAVEFORM_MODE_DU,
+            display_temp::TEMP_USE_AMBIENT,
+            dither_mode::EPDC_FLAG_USE_DITHERING_PASSTHROUGH,
+            0,
+            false,
+        );
+        let eles = &mut app.ui_elements.to_owned();
+        // let app: &'static mut ApplicationContext<'static> = app.upgrade_ref();
+        for x in eles {
+            if x.0.ends_with(":current:weather") || x.0.ends_with(":hourly:weather") {
+                let mut lock_ele = x.1.write();
+                match lock_ele.inner {
+                    UIElement::Text {
+                        ref text,
+                        scale,
+                        foreground,
+                        border_px,
+                    } => app.display_text(
+                        lock_ele.position.cast().unwrap(),
+                        foreground,
+                        scale,
+                        border_px as u32,
+                        8,
+                        text.to_string(),
+                        lock_ele.refresh,
+                    ),
+                    UIElement::Image { ref img } => {
+                        app.display_image(&img, lock_ele.position.cast().unwrap(), lock_ele.refresh)
+                    }
+                    UIElement::Region {
+                        size,
+                        border_color,
+                        border_px,
+                    } => app.display_rect(
+                        lock_ele.position.cast().unwrap(),
+                        size.cast().unwrap(),
+                        border_px,
+                        border_color,
+                        lock_ele.refresh,
+                    ),
+                    UIElement::Unspecified => return,
+                };
+
+                if let Some(last_rect) = lock_ele.last_drawn_rect {
+                    if last_rect != rect {
+                        fb.partial_refresh(
+                            &last_rect,
+                            PartialRefreshMode::Async,
+                            common::waveform_mode::WAVEFORM_MODE_DU,
+                            common::display_temp::TEMP_USE_REMARKABLE_DRAW,
+                            common::dither_mode::EPDC_FLAG_USE_DITHERING_PASSTHROUGH,
+                            0,
+                            false,
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl Weather {
@@ -50,18 +130,18 @@ impl Weather {
         let img = image::load_from_memory(map_icon(icon)).unwrap()
             .resize(180, 180, image::imageops::Nearest);
 
-        app.add_or_flash_text(
+        app.add_or_flash(
             "icon:current:weather",
             UIElementWrapper {
                 position: Point2 { x: 16, y: 16 },
-                onclick: Some(refresh_weather),
+                onclick: None,
                 inner: UIElement::Image {
                     img
                 },
                 ..default()
             },
         );
-        app.add_or_flash_text(
+        app.add_or_flash(
             "temp:current:weather",
             UIElementWrapper {
                 position: Point2 { x: 220, y: 80 },
@@ -74,7 +154,7 @@ impl Weather {
                 ..default()
             },
         );
-        app.add_or_flash_text(
+        app.add_or_flash(
             "desc:current:weather",
             UIElementWrapper {
                 position: Point2 { x: 220, y: 140 },
@@ -91,7 +171,7 @@ impl Weather {
         let update_time = format!("{}", Utc.timestamp(current.dt as i64, 0)
             .with_timezone(&time_zone).format("%m-%d %H:%M"));
         debug!("{} , {}", current.dt, update_time);
-        app.add_or_flash_text(
+        app.add_or_flash(
             "update_time:current:weather",
             UIElementWrapper {
                 position: Point2 { x: 80, y: 230 },
@@ -121,7 +201,7 @@ impl Weather {
             let img = image::load_from_memory(map_icon(weather.clone().icon)).unwrap()
                 .resize(64, 64, image::imageops::Nearest);
             let desc = map_desc(weather.id);
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_date:daily:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: 90 + x_offset, y: y_offset },
@@ -134,7 +214,7 @@ impl Weather {
                     ..default()
                 },
             );
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_temp:daily:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: 20 + x_offset, y: y_offset + 60 },
@@ -149,7 +229,7 @@ impl Weather {
                     },
                 },
             );
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_icon:daily:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: 20 + x_offset, y: y_offset - 40 },
@@ -161,7 +241,7 @@ impl Weather {
                     },
                 },
             );
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_desc:daily:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: 150 + x_offset, y: y_offset + 60 },
@@ -195,7 +275,7 @@ impl Weather {
             let hour = format!("{}", Utc.timestamp(record.dt as i64, 0).with_timezone(&time_zone).format("%H时"));
             let img = image::load_from_memory(map_icon(weather.clone().icon)).unwrap()
                 .resize(50, 50, image::imageops::Nearest);
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_hour:hourly:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: x_offset, y: y_offset },
@@ -210,7 +290,7 @@ impl Weather {
                     },
                 },
             );
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_icon:hourly:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: x_offset, y: y_offset + 16 },
@@ -223,7 +303,7 @@ impl Weather {
                 },
             );
 
-            app.add_or_flash_text(
+            app.add_or_flash(
                 (i.to_string() + "_temp:hourly:weather").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: x_offset, y: y_offset + 90 },
