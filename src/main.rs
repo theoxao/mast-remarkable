@@ -2,6 +2,8 @@ extern crate env_logger;
 
 extern crate libremarkable;
 
+extern crate wifiscanner;
+
 #[macro_use]
 extern crate log;
 
@@ -22,8 +24,33 @@ use mast_remarkable::common::*;
 use mast_remarkable::refresh::{map_week, show_luni_calendar};
 use mast_remarkable::weather::show_weather;
 use serde_json::Value;
+use libremarkable::input::gpio;
+use std::process::Command;
+use libremarkable::appctx;
+use mast_remarkable::wifi::{refresh_wifi_icon, turn_on, turn_on_on_click, turn_off};
 
-fn on_button_press(_ctx: &mut ApplicationContext, _event: GPIOEvent) {}
+fn on_button_press(_ctx: &mut ApplicationContext, input: GPIOEvent) {
+    let (btn, new_state) = match input {
+        gpio::GPIOEvent::Press { button } => (button, true),
+        gpio::GPIOEvent::Unpress { button } => (button, false),
+        _ => return,
+    };
+
+    match btn {
+        gpio::PhysicalButton::POWER => {
+            Command::new("systemctl")
+                .arg("start")
+                .arg("xochitl")
+                .spawn()
+                .unwrap();
+            std::process::exit(0);
+        }
+        gpio::PhysicalButton::MIDDLE => {
+            turn_on_on_click(_ctx);
+        }
+        _ => {}
+    };
+}
 
 fn on_wacom_input(_ctx: &mut ApplicationContext, _event: WacomEvent) {}
 
@@ -105,18 +132,15 @@ fn main() {
             },
         );
         show_weather(appref);
+        turn_off();
+        refresh_wifi_icon(appref);
         show_luni_calendar(appref);
         // Draw the scene
         app.draw_elements();
-
-
         let clock_thread = std::thread::spawn(move || {
             refresh::refresh(appref, 60 * 1000);
         });
-
         app.dispatch_events(true, true, true);
         clock_thread.join().unwrap();
     }
 }
-
-

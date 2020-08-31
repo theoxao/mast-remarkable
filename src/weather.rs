@@ -10,8 +10,12 @@ use libremarkable::framebuffer::{cgmath, common, FramebufferDraw, FramebufferRef
 use libremarkable::framebuffer::common::{color, display_temp, dither_mode, mxcfb_rect, waveform_mode};
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
+use crate::wifi::check_wifi_state;
+use std::thread::sleep;
+use std::time::Duration;
 
 pub fn get_weather() -> Option<Weather> {
+    debug!("wifi status : {:?}", check_wifi_state());
     let response = DefaultHttpRequest::get_from_url_str("http://api.theoxao.com/api/weather").unwrap().send();
     if let Err(e) = response {
         error!("{:?}", e);
@@ -56,7 +60,7 @@ pub fn refresh(app: &mut appctx::ApplicationContext) {
         weather.show_current_weather(app);
         weather.show_hourly_weather(app);
         let fb = app.get_framebuffer_ref();
-        let rect = mxcfb_rect::from(Point2 { x: 0, y: 0 }, cgmath::Vector2 { x: 1850, y: 235 });
+        let rect = mxcfb_rect::from(Point2 { x: 0, y: 0 }, cgmath::Vector2 { x: 1600, y: 235 });
         fb.fill_rect(rect.top_left().cast().unwrap(), rect.size(), color::WHITE);
         fb.partial_refresh(
             &rect,
@@ -269,7 +273,7 @@ impl Weather {
         let y_offset = 50;
         let time_zone = FixedOffset::east(8 * 3600);
         for record in &self.hourly {
-            if x_offset > 1800 {
+            if x_offset > 1700 {
                 break;
             }
             let temp = (record.temp as i32).to_string();

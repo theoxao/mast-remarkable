@@ -14,6 +14,7 @@ use std::process::Command;
 use serde_json::Value;
 use libremarkable::framebuffer::{cgmath, FramebufferDraw, FramebufferRefresh};
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
+use crate::wifi::{refresh_wifi_icon, check_wifi_state, turn_off};
 
 pub static mut HOUR: u32 = 25;
 pub static mut DATE: u32 = 32;
@@ -34,13 +35,12 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
             *text = format!("{}", dt.format("%M"));
         }
         app.flash_element(CLOCK_MINUTE);
+
         if dt.hour() != HOUR {
             if let UIElement::Text { ref mut text, .. } = hour_label.write().inner {
                 *text = format!("{}", dt.format("%H:"))
             };
-            HOUR = dt.hour();
             app.flash_element(CLOCK_HOUR);
-            refresh_hourly(app)
         }
         if dt.day() != DATE {
             show_luni_calendar(app);
@@ -52,10 +52,22 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
             }
             app.flash_element(CLOCK_DATE);
             app.flash_element(CLOCK_WEEK);
-            refresh_daily(app);
-            sync_time();
-            DATE = dt.day();
         }
+        if dt.hour() != HOUR {
+            debug!("wifi status : {:?}", check_wifi_state());
+            crate::wifi::turn_on();
+            sleep(Duration::from_secs(5));
+            refresh_hourly(app);
+            HOUR = dt.hour();
+            if dt.day() != DATE {
+                refresh_daily(app);
+                sync_time();
+                DATE = dt.day();
+            }
+            turn_off();
+            debug!("wifi status : {:?}", check_wifi_state());
+        }
+        refresh_wifi_icon(app);
         let dt = Local::now();
         let offset = 60 - dt.second();
         sleep(Duration::from_secs(offset as u64));
@@ -63,6 +75,9 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
 }
 
 fn sync_time() {
+    debug!("wifi status : {:?}", check_wifi_state());
+    crate::wifi::turn_on();
+    sleep(Duration::from_secs(5));
     let response = easy_http_request::DefaultHttpRequest::get_from_url_str("http://quan.suning.com/getSysTime.do").unwrap().send().unwrap();
     let value: Result<Value, _> = serde_json::from_slice(response.body.as_slice());
     let value1 = value.unwrap();
@@ -71,6 +86,8 @@ fn sync_time() {
     let op = command.arg("set-time").arg(ts);
     debug!("{:?}", op);
     op.spawn().expect("error");
+    debug!("wifi status : {:?}", check_wifi_state());
+    turn_off();
 }
 
 pub fn flash_full_screen(app: &mut appctx::ApplicationContext) {
