@@ -1,5 +1,7 @@
 use std::borrow::BorrowMut;
 use std::default::default;
+use std::thread::sleep;
+use std::time::Duration;
 
 use chrono::{FixedOffset, TimeZone, Utc};
 use easy_http_request::DefaultHttpRequest;
@@ -10,13 +12,14 @@ use libremarkable::framebuffer::{cgmath, common, FramebufferDraw, FramebufferRef
 use libremarkable::framebuffer::common::{color, display_temp, dither_mode, mxcfb_rect, waveform_mode};
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
+
+use crate::common::API_HOST;
 use crate::wifi::check_wifi_state;
-use std::thread::sleep;
-use std::time::Duration;
+use crate::wifi::WifiState::Unable;
 
 pub fn get_weather() -> Option<Weather> {
     debug!("wifi status : {:?}", check_wifi_state());
-    let response = DefaultHttpRequest::get_from_url_str("http://api.theoxao.com/api/weather").unwrap().send();
+    let response = DefaultHttpRequest::get_from_url_str(API_HOST.to_owned() + "/api/weather").unwrap().send();
     if let Err(e) = response {
         error!("{:?}", e);
         return None;
@@ -38,6 +41,9 @@ static ALERT_ICON: &[u8] = include_bytes!("../assets/icon/alert.png") as &[u8];
 static WEATHER: Option<Weather> = None;
 
 pub fn show_weather(app: &mut appctx::ApplicationContext) {
+    if let Unable(_) = check_wifi_state() {
+        return
+    }
     if let Some(weather) = get_weather() {
         weather.show_current_weather(app);
         weather.show_hourly_weather(app);
@@ -50,12 +56,18 @@ pub fn refresh_hourly(app: &mut appctx::ApplicationContext) {
 }
 
 pub fn refresh_daily(app: &mut appctx::ApplicationContext) {
+    if let Unable(_) = check_wifi_state() {
+        return
+    }
     if let Some(weather) = get_weather() {
         weather.show_daily_weather(app);
     }
 }
 
 pub fn refresh(app: &mut appctx::ApplicationContext) {
+    if let Unable(_) = check_wifi_state() {
+        return
+    }
     if let Some(weather) = get_weather() {
         weather.show_current_weather(app);
         weather.show_hourly_weather(app);
@@ -91,7 +103,7 @@ pub fn refresh(app: &mut appctx::ApplicationContext) {
                         text.to_string(),
                         lock_ele.refresh,
                     ),
-                    UIElement::Image { ref img } => {
+                    UIElement::Image { ref img, .. } => {
                         app.display_image(&img, lock_ele.position.cast().unwrap(), lock_ele.refresh)
                     }
                     UIElement::Region {
@@ -142,7 +154,8 @@ impl Weather {
                 position: Point2 { x: 16, y: 16 },
                 onclick: None,
                 inner: UIElement::Image {
-                    img
+                    name: None,
+                    img,
                 },
                 ..default()
             },
@@ -243,7 +256,8 @@ impl Weather {
                     last_drawn_rect: None,
                     onclick: None,
                     inner: UIElement::Image {
-                        img
+                        name: None,
+                        img,
                     },
                 },
             );
@@ -304,7 +318,8 @@ impl Weather {
                     last_drawn_rect: None,
                     onclick: None,
                     inner: UIElement::Image {
-                        img
+                        name: None,
+                        img,
                     },
                 },
             );

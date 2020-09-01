@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::env;
 use std::fs::FileType;
 use std::process::Command;
@@ -6,12 +7,12 @@ use std::time::Duration;
 
 use image::DynamicImage;
 use libremarkable::appctx;
+use libremarkable::appctx::ApplicationContext;
 use libremarkable::cgmath::Point2;
-use libremarkable::ui_extensions::element::{UIElement, UIElementWrapper, UIElementHandle};
+use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
 
 use crate::common;
 use crate::wifi::WifiState::{Connected, Enable, Unable};
-use libremarkable::appctx::ApplicationContext;
 
 const PATH_ENV: &'static str = "PATH";
 const PATH_SYSTEM: &'static str = "/usr/sbin:/sbin";
@@ -24,29 +25,71 @@ pub enum WifiState {
 }
 
 pub fn refresh_wifi_icon(app: &mut appctx::ApplicationContext) {
-    let image_bytes = match check_wifi_state() {
+    let state = check_wifi_state();
+    let image_bytes = match state {
         Unable(_) => common::WIFI_OFF_ICON,
         Enable(_) => common::WIFI_ON_ICON,
         Connected(_) => common::WIFI_CONNECTED_ICON,
     };
+    let ele = app.get_element_by_name("wifi_icon");
+    if ele.is_some() {
+        if let UIElement::Image { ref mut name, .. } = ele.unwrap().write().inner {
+            // let state = check_wifi_state();
+            debug!("origin name: {:?} , current name: {:?}", *name, state);
+            if *name.as_ref().unwrap() == format!("{:?}", state) {
+                return;
+            } else {
+                *name = Some(format!("{:?}", state))
+            }
+        }
+    }
     app.add_or_flash("wifi_icon",
                      UIElementWrapper {
                          position: Point2 { x: 1760, y: 50 },
                          refresh: Default::default(),
                          last_drawn_rect: None,
-                         onclick: None,
+                         onclick: Some(on_wifi_icon_clicked),
                          inner: UIElement::Image {
-                             img: image::load_from_memory(image_bytes).unwrap().resize(64, 64, image::imageops::Nearest)
+                             name: Some(format!("{:?}", state)),
+                             img: image::load_from_memory(image_bytes).unwrap().resize(64, 64, image::imageops::Nearest),
                          },
                      },
     );
+}
+
+
+fn on_wifi_icon_clicked(app: &mut appctx::ApplicationContext, _: UIElementHandle) {
+    match check_wifi_state() {
+        Unable(_) => {
+            turn_on_on_click(app);
+        }
+        Enable(_) => return,  //todo choose a wifi to connect
+        Connected(_) => {
+            turn_off();
+            refresh_wifi_icon(app);
+        }
+    }
 }
 
 pub fn turn_on_on_click(app: &mut appctx::ApplicationContext) {
     debug!("handle click wifi icon");
     turn_on();
     refresh_wifi_icon(app);
-    sleep(Duration::from_secs(5));
+    wait_util_connected(app);
+    refresh_wifi_icon(app);
+}
+
+pub fn wait_util_connected(app: &mut appctx::ApplicationContext) {
+    for x in 1..15 {
+        sleep(Duration::from_secs(1));
+        let state = check_wifi_state();
+        debug!("{:?}", state);
+        match state {
+            Unable(_) => turn_on(),
+            Enable(_) => {}
+            Connected(_) => return,
+        }
+    }
     refresh_wifi_icon(app);
 }
 
