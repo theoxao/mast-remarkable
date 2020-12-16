@@ -26,6 +26,8 @@ use mast_remarkable::refresh;
 use mast_remarkable::refresh::{map_week, show_luni_calendar};
 use mast_remarkable::weather::show_weather;
 use mast_remarkable::wifi::{refresh_wifi_icon, turn_off, turn_on, turn_on_on_click};
+use mast_remarkable::control::{get_control, show_control};
+use libremarkable::framebuffer::cgmath;
 
 fn on_button_press(_ctx: &mut ApplicationContext, input: GPIOEvent) {
     let (btn, new_state) = match input {
@@ -147,6 +149,7 @@ unsafe fn flash_all(app: &mut appctx::ApplicationContext) {
             },
         },
     );
+    show_control(app);
     show_weather(app);
     // turn_off();
     refresh_wifi_icon(app);

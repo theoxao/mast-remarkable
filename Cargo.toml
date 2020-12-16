@@ -19,3 +19,4 @@ openssl = { version = "0.10", features = ["vendored"] }
 image = "0.21.3"
 chinese-lunisolar-calendar="0.1.14"
 wifiscanner="0.5.1"
+rand="0.7.3"

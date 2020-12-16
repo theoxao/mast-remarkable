@@ -110,6 +110,7 @@ pub fn refresh(app: &mut appctx::ApplicationContext) {
                         size,
                         border_color,
                         border_px,
+                        ..
                     } => app.display_rect(
                         lock_ele.position.cast().unwrap(),
                         size.cast().unwrap(),
