@@ -52,6 +52,7 @@ pub fn refresh_wifi_icon(app: &mut appctx::ApplicationContext) {
                          inner: UIElement::Image {
                              name: Some(format!("{:?}", state)),
                              img: image::load_from_memory(image_bytes).unwrap().resize(64, 64, image::imageops::Nearest),
+                             extra: None
                          },
                      },
     );

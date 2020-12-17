@@ -157,6 +157,7 @@ impl Weather {
                 inner: UIElement::Image {
                     name: None,
                     img,
+                    extra: None
                 },
                 ..default()
             },
@@ -259,6 +260,7 @@ impl Weather {
                     inner: UIElement::Image {
                         name: None,
                         img,
+                        extra: None
                     },
                 },
             );
@@ -321,6 +323,7 @@ impl Weather {
                     inner: UIElement::Image {
                         name: None,
                         img,
+                        extra: None
                     },
                 },
             );
