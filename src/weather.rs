@@ -13,8 +13,8 @@ use libremarkable::framebuffer::common::{color, display_temp, dither_mode, mxcfb
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
 
-use crate::common::API_HOST;
-use crate::wifi::check_wifi_state;
+use crate::common::{API_HOST, CommonResponse};
+use crate::wifi::{check_wifi_state, turn_on};
 use crate::wifi::WifiState::Unable;
 
 pub fn get_weather() -> Option<Weather> {
@@ -24,7 +24,7 @@ pub fn get_weather() -> Option<Weather> {
         error!("{:?}", e);
         return None;
     }
-    Some(serde_json::from_slice(response.unwrap().body.as_slice()).unwrap())
+    serde_json::from_slice::<CommonResponse<Weather>>(response.unwrap().body.as_slice()).unwrap().data
 }
 
 static N01_ICON: &[u8] = include_bytes!("../assets/icon/01n@4x.png") as &[u8];
@@ -42,7 +42,8 @@ static WEATHER: Option<Weather> = None;
 
 pub fn show_weather(app: &mut appctx::ApplicationContext) {
     if let Unable(_) = check_wifi_state() {
-        return
+        turn_on()
+        // return
     }
     if let Some(weather) = get_weather() {
         weather.show_current_weather(app);

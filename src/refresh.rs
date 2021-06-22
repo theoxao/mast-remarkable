@@ -61,10 +61,9 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
             HOUR = dt.hour();
             if dt.day() != DATE {
                 refresh_daily(app);
-                sync_time();
                 DATE = dt.day();
             }
-            turn_off();
+            // turn_off();
             debug!("wifi status : {:?}", check_wifi_state());
         }
         refresh_wifi_icon(app);
@@ -72,19 +71,6 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
         let offset = 60 - dt.second();
         sleep(Duration::from_secs(offset as u64));
     }
-}
-
-fn sync_time() {
-    debug!("wifi status : {:?}", check_wifi_state());
-    let response = easy_http_request::DefaultHttpRequest::get_from_url_str("http://quan.suning.com/getSysTime.do").unwrap().send().unwrap();
-    let value: Result<Value, _> = serde_json::from_slice(response.body.as_slice());
-    let value1 = value.unwrap();
-    let ts = value1.as_object().unwrap().get("sysTime2").unwrap().as_str().unwrap();
-    let mut command = Command::new("timedatectl");
-    let op = command.arg("set-time").arg(ts);
-    debug!("{:?}", op);
-    op.spawn().expect("error");
-    debug!("wifi status : {:?}", check_wifi_state());
 }
 
 pub fn flash_full_screen(app: &mut appctx::ApplicationContext) {

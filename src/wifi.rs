@@ -66,8 +66,8 @@ fn on_wifi_icon_clicked(app: &mut appctx::ApplicationContext, _: UIElementHandle
         }
         Enable(_) => return,  //todo choose a wifi to connect
         Connected(_) => {
-            turn_off();
-            refresh_wifi_icon(app);
+            // turn_off();
+            // refresh_wifi_icon(app);
         }
     }
 }
@@ -111,12 +111,12 @@ pub fn turn_on() {
 // 0 unable , 1 enable but not connected , 2 connected
 pub fn check_wifi_state() -> WifiState {
     let path = get_path();
-    let mut x = Command::new("iwconfig");
+    let mut x = Command::new("iw");
     let mut command = x
         .env(PATH_ENV, path.clone())
-        .arg("wlan0");
+        .arg("wlan0").arg("info");
     let output = String::from_utf8(command.output().unwrap().stdout).unwrap();
-    return if !output.contains("Tx-Power") {
+    return if !output.contains("txpower") {
         Unable(0)
     } else {
         if output.contains("ESSID:off/any") {

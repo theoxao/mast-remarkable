@@ -11,3 +11,12 @@ pub(crate) static WIFI_CONNECTED_ICON: &[u8] = include_bytes!("../assets/icon/wi
 
 pub(crate) static SWITCH_ON_ICON: &[u8] = include_bytes!("../assets/icon/switch_on.png") as &[u8];
 pub(crate) static SWITCH_OFF_ICON: &[u8] = include_bytes!("../assets/icon/switch_off.png") as &[u8];
+
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CommonResponse<T> {
+    pub status: u8,
+    pub error: Option<String>,
+    pub data: Option<T>,
+}

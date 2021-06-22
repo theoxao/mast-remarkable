@@ -13,19 +13,18 @@ use libremarkable::framebuffer::cgmath::Vector2;
 use libremarkable::framebuffer::common::color;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
 use rand::Rng;
-use serde::export::Option::Some;
 
-use crate::common::{API_HOST, SWITCH_OFF_ICON, SWITCH_ON_ICON};
+use crate::common::{API_HOST, SWITCH_OFF_ICON, SWITCH_ON_ICON, CommonResponse};
 
-pub fn get_control() -> Option<Vec<RemarkableDeviceView>> {
-    let response = DefaultHttpRequest::get_from_url_str(API_HOST.to_owned() + "/api/remarkable/list").unwrap().send();
+pub fn get_control() ->Option<Vec<RemarkableDeviceView>> {
+    let response = DefaultHttpRequest::get_from_url_str(API_HOST.to_owned() + "/api/rm/list").unwrap().send();
     if let Err(e) = response {
         error!("{:?}", e);
         return None;
     }
     debug!("{:?}", response);
 
-    return Some(serde_json::from_slice(response.unwrap().body.as_slice()).unwrap());
+    return serde_json::from_slice::<CommonResponse<Vec<RemarkableDeviceView>> >(response.unwrap().body.as_slice()).unwrap().data;
 }
 
 pub fn show_control(app: &mut appctx::ApplicationContext) {
@@ -35,15 +34,16 @@ pub fn show_control(app: &mut appctx::ApplicationContext) {
         let mut index = 0;
         for device in list {
             debug!("{:?}", device);
+            let dvc = device.device.as_ref().unwrap().clone();
             app.add_or_flash(
                 (index.to_string() + "_device:icon").as_str(),
                 UIElementWrapper {
                     position: Point2 { x: x_os + 10, y: y_os - 120 },
                     inner: UIElement::Image {
-                        name: Some(device.param.as_ref().unwrap().id.to_string()),
-                        img: image::load_from_memory(if device.param.as_ref().unwrap().value == "1" { SWITCH_ON_ICON } else { SWITCH_OFF_ICON })
+                        name: Some(dvc.id.to_string()),
+                        img: image::load_from_memory(if dvc.value == "1" { SWITCH_ON_ICON } else { SWITCH_OFF_ICON })
                             .unwrap().resize(100, 100, image::imageops::Nearest),
-                        extra: Some(device.param.unwrap().value),
+                        extra: Some(dvc.value),
                     },
                     ..default()
                 },
@@ -116,7 +116,6 @@ pub fn device_click(app: &mut appctx::ApplicationContext, handler: UIElementHand
                         img_name = Some(name);
                         extra_holder = Some(extra);
                     }
-
                     //change icon
                     match ele.write().inner {
                         UIElement::Image { ref mut img, ref mut name, ref mut extra } => {
@@ -154,7 +153,6 @@ pub fn device_click(app: &mut appctx::ApplicationContext, handler: UIElementHand
 #[serde(rename_all = "camelCase")]
 pub struct RemarkableDeviceView {
     pub device: Option<DeviceView>,
-    pub param: Option<Param>,
     pub sort: i32,
 
 }
@@ -167,22 +165,6 @@ pub struct DeviceView {
     pub id: i32,
     pub name: String,
     pub desc: Option<String>,
-    pub device_type: String,
-    pub icon: Option<String>,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Param {
-    pub id: i32,
-    pub param_type: String,
-    pub value_type: String,
-    pub key: String,
-    pub desc: Option<String>,
-    pub options: String,
     pub value: String,
-    pub usage: String,
-    pub device_id: i32,
-    pub in_id: Option<i32>,
-    pub out_id: Option<i32>,
+    pub icon: Option<String>,
 }

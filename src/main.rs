@@ -53,13 +53,17 @@ fn on_button_press(_ctx: &mut ApplicationContext, input: GPIOEvent) {
     };
 }
 
-fn on_wacom_input(_ctx: &mut ApplicationContext, _event: WacomEvent) {}
+fn on_wacom_input(_ctx: &mut ApplicationContext, _event: WacomEvent) {
+
+
+
+}
 
 fn on_touch_handler(_ctx: &mut ApplicationContext, _event: MultitouchEvent) {
     let pos = match _event {
-        MultitouchEvent::Touch {
-            position, ..
-        } => (position),
+        MultitouchEvent::Press {
+           finger
+        } => (finger.pos),
         _ => return,
     };
     debug!("{:?}", pos)
