@@ -9,17 +9,16 @@ use crate::common::*;
 use chinese_lunisolar_calendar::{LunisolarDate, ChineseVariant};
 use libremarkable::cgmath::Point2;
 use libremarkable::framebuffer::common::{color, mxcfb_rect, waveform_mode, display_temp, dither_mode};
-use crate::weather::{show_weather, refresh_hourly, refresh_daily};
-use std::process::Command;
-use serde_json::Value;
+use crate::weather::{refresh_hourly, refresh_daily};
 use libremarkable::framebuffer::{cgmath, FramebufferDraw, FramebufferRefresh};
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
-use crate::wifi::{refresh_wifi_icon, check_wifi_state, turn_off, wait_util_connected};
+use crate::wifi::{refresh_wifi_icon, check_wifi_state, wait_util_connected};
+use crate::battery::flush_battery_info;
 
 pub static mut HOUR: u32 = 25;
 pub static mut DATE: u32 = 32;
 
-pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
+pub unsafe fn refresh(app: &mut appctx::ApplicationContext) {
     let time_label = app.get_element_by_name(CLOCK_MINUTE).unwrap();
     let hour_label = app.get_element_by_name(CLOCK_HOUR).unwrap();
     let date_label = app.get_element_by_name(CLOCK_DATE).unwrap();
@@ -67,6 +66,7 @@ pub unsafe fn refresh(app: &mut appctx::ApplicationContext, millis: u64) {
             debug!("wifi status : {:?}", check_wifi_state());
         }
         refresh_wifi_icon(app);
+        flush_battery_info(app);
         let dt = Local::now();
         let offset = 60 - dt.second();
         sleep(Duration::from_secs(offset as u64));

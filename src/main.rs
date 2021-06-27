@@ -14,23 +14,22 @@ use libremarkable::appctx;
 use libremarkable::appctx::ApplicationContext;
 use libremarkable::cgmath::Point2;
 use libremarkable::framebuffer::common::*;
-use libremarkable::input::{gpio, InputDevice};
+use libremarkable::input::{gpio};
 use libremarkable::input::gpio::GPIOEvent;
 use libremarkable::input::multitouch::MultitouchEvent;
 use libremarkable::input::wacom::WacomEvent;
-use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
-use serde_json::Value;
+use libremarkable::ui_extensions::element::{UIElement, UIElementWrapper};
 
 use mast_remarkable::common::*;
 use mast_remarkable::refresh;
 use mast_remarkable::refresh::{map_week, show_luni_calendar};
 use mast_remarkable::weather::show_weather;
-use mast_remarkable::wifi::{refresh_wifi_icon, turn_off, turn_on, turn_on_on_click};
-use mast_remarkable::control::{get_control, show_control};
-use libremarkable::framebuffer::cgmath;
+use mast_remarkable::wifi::{refresh_wifi_icon};
+use mast_remarkable::control::{show_control};
+use mast_remarkable::battery::flush_battery_info;
 
 fn on_button_press(_ctx: &mut ApplicationContext, input: GPIOEvent) {
-    let (btn, new_state) = match input {
+    let (btn, _new_state) = match input {
         gpio::GPIOEvent::Press { button } => (button, true),
         gpio::GPIOEvent::Unpress { button } => (button, false),
         _ => return,
@@ -55,8 +54,6 @@ fn on_button_press(_ctx: &mut ApplicationContext, input: GPIOEvent) {
 
 fn on_wacom_input(_ctx: &mut ApplicationContext, _event: WacomEvent) {
 
-
-
 }
 
 fn on_touch_handler(_ctx: &mut ApplicationContext, _event: MultitouchEvent) {
@@ -80,7 +77,7 @@ fn main() {
         let appref = app.upgrade_ref();
         flash_all(appref);
         let clock_thread = std::thread::spawn(move || {
-            refresh::refresh(appref, 60 * 1000);
+            refresh::refresh(appref);
         });
         app.dispatch_events(true, true, true);
         clock_thread.join().unwrap();
@@ -158,6 +155,7 @@ unsafe fn flash_all(app: &mut appctx::ApplicationContext) {
     // turn_off();
     refresh_wifi_icon(app);
     show_luni_calendar(app);
+    flush_battery_info(app);
     // Draw the scene
     app.draw_elements();
 }

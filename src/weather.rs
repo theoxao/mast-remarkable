@@ -1,17 +1,13 @@
-use std::borrow::BorrowMut;
 use std::default::default;
-use std::thread::sleep;
-use std::time::Duration;
 
 use chrono::{FixedOffset, TimeZone, Utc};
 use easy_http_request::DefaultHttpRequest;
 use libremarkable::appctx;
-use libremarkable::appctx::ApplicationContext;
 use libremarkable::cgmath::Point2;
 use libremarkable::framebuffer::{cgmath, common, FramebufferDraw, FramebufferRefresh};
 use libremarkable::framebuffer::common::{color, display_temp, dither_mode, mxcfb_rect, waveform_mode};
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
-use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
+use libremarkable::ui_extensions::element::{UIElement, UIElementWrapper};
 
 use crate::common::{API_HOST, CommonResponse};
 use crate::wifi::{check_wifi_state, turn_on};
@@ -38,7 +34,7 @@ static N13_ICON: &[u8] = include_bytes!("../assets/icon/13n@4x.png") as &[u8];
 static N50_ICON: &[u8] = include_bytes!("../assets/icon/50n@4x.png") as &[u8];
 static ALERT_ICON: &[u8] = include_bytes!("../assets/icon/alert.png") as &[u8];
 
-static WEATHER: Option<Weather> = None;
+//static WEATHER: Option<Weather> = None;
 
 pub fn show_weather(app: &mut appctx::ApplicationContext) {
     if let Unable(_) = check_wifi_state() {
@@ -88,7 +84,7 @@ pub fn refresh(app: &mut appctx::ApplicationContext) {
         // let app: &'static mut ApplicationContext<'static> = app.upgrade_ref();
         for x in eles {
             if x.0.ends_with(":current:weather") || x.0.ends_with(":hourly:weather") {
-                let mut lock_ele = x.1.write();
+                let lock_ele = x.1.write();
                 match lock_ele.inner {
                     UIElement::Text {
                         ref text,

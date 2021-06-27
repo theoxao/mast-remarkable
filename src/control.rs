@@ -1,18 +1,14 @@
-use std::borrow::{Borrow, BorrowMut};
 use std::default::default;
-use std::io::Read;
-use std::ops::{Index, Range, RangeTo, Rem};
+use std::ops::{Index, RangeTo};
 use std::str::FromStr;
 
 use easy_http_request::{DefaultHttpRequest, HttpRequestBody};
 use easy_http_request::mime::Mime;
-use image::DynamicImage;
 use libremarkable::appctx;
 use libremarkable::cgmath::Point2;
 use libremarkable::framebuffer::cgmath::Vector2;
 use libremarkable::framebuffer::common::color;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
-use rand::Rng;
 
 use crate::common::{API_HOST, SWITCH_OFF_ICON, SWITCH_ON_ICON, CommonResponse};
 
@@ -102,7 +98,6 @@ pub fn show_control(app: &mut appctx::ApplicationContext) {
 pub fn device_click(app: &mut appctx::ApplicationContext, handler: UIElementHandle) {
     let appref = app.upgrade_ref();
     for ui in &app.ui_elements {
-        let pos = ui.1.read().last_drawn_rect.unwrap();
         match ui.1.read().inner {
             UIElement::Region { ref name, .. } => {
                 //find the index of clicked region
@@ -110,11 +105,11 @@ pub fn device_click(app: &mut appctx::ApplicationContext, handler: UIElementHand
                     let index = name.as_ref().unwrap().index(RangeTo { end: 1 }).parse::<u8>().unwrap();
                     let ele = appref.get_element_by_name((index.to_string() + "_device:icon").as_str()).unwrap();
                     let mut img_name = None;
-                    let mut extra_holder = None;
+                    let mut _extra_holder = None;
                     let element = &handler.read().inner;
                     if let UIElement::Image { ref name, ref extra, .. } = element {
                         img_name = Some(name);
-                        extra_holder = Some(extra);
+                        _extra_holder = Some(extra);
                     }
                     //change icon
                     match ele.write().inner {

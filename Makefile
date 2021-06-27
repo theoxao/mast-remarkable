@@ -4,7 +4,8 @@ build:
 	cargo build --target=$(TARGET)
 
 
-DEVICE_IP ?= 10.11.99.1
+#DEVICE_IP ?= 10.11.99.1
+DEVICE_IP ?= 192.168.31.200
 DEVICE_HOST ?= root@$(DEVICE_IP)
 deploy:
 	ssh $(DEVICE_HOST) 'killall -q -9 mast_remarkable || true; systemctl stop xochitl || true'

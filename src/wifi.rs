@@ -1,13 +1,9 @@
-use std::borrow::Borrow;
 use std::env;
-use std::fs::FileType;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
-use image::DynamicImage;
 use libremarkable::appctx;
-use libremarkable::appctx::ApplicationContext;
 use libremarkable::cgmath::Point2;
 use libremarkable::ui_extensions::element::{UIElement, UIElementHandle, UIElementWrapper};
 
@@ -81,7 +77,7 @@ pub fn turn_on_on_click(app: &mut appctx::ApplicationContext) {
 }
 
 pub fn wait_util_connected(app: &mut appctx::ApplicationContext) {
-    for x in 1..15 {
+    for _x in 1..15 {
         sleep(Duration::from_secs(1));
         let state = check_wifi_state();
         debug!("{:?}", state);
@@ -112,7 +108,7 @@ pub fn turn_on() {
 pub fn check_wifi_state() -> WifiState {
     let path = get_path();
     let mut x = Command::new("iw");
-    let mut command = x
+    let command = x
         .env(PATH_ENV, path.clone())
         .arg("wlan0").arg("info");
     let output = String::from_utf8(command.output().unwrap().stdout).unwrap();

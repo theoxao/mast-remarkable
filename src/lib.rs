@@ -11,3 +11,4 @@ pub mod refresh;
 pub mod common;
 pub mod wifi;
 pub mod control;
+pub mod battery;
